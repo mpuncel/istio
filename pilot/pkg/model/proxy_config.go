@@ -145,6 +145,9 @@ func toMeshConfigProxyConfig(pc *v1beta1.ProxyConfig) *meshconfig.ProxyConfig {
 	if pc.Image != nil {
 		mcpc.Image = pc.Image
 	}
+	if pc.EnableHttp2Connect != nil {
+		mcpc.EnableHttp2Connect = pc.EnableHttp2Connect
+	}
 	return mcpc
 }
 

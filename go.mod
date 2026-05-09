@@ -239,3 +239,5 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
+
+replace istio.io/api => github.com/mpuncel/api v1.30.0-alpha.1.0.20260511120857-41a7e9dd48ff

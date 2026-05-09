@@ -271,6 +271,23 @@ func enableHTTP10(enableFlag string) bool {
 	return enableFlag == "1"
 }
 
+func shouldEnableHTTP2Connect(proxyMetadata *model.NodeMetadata, push *model.PushContext) bool {
+	if proxyMetadata == nil {
+		return false
+	}
+	if push == nil || push.Mesh == nil {
+		return false
+	}
+	return proxyMetadata.ProxyConfigOrDefault(push.Mesh.GetDefaultConfig()).GetEnableHttp2Connect().GetValue()
+}
+
+func enableHTTP2Connect(connectionManager *hcm.HttpConnectionManager) {
+	if connectionManager.Http2ProtocolOptions == nil {
+		connectionManager.Http2ProtocolOptions = &core.Http2ProtocolOptions{}
+	}
+	connectionManager.Http2ProtocolOptions.AllowConnect = true
+}
+
 type listenerBinding struct {
 	// binds contains a list of all addresses this listener should bind to. The first one in the list is considered the primary
 	binds []string
@@ -781,6 +798,9 @@ func buildSidecarOutboundHTTPListenerOpts(
 		httpOpts.connectionManager.HttpProtocolOptions = &core.Http1ProtocolOptions{
 			AcceptHttp_10: true,
 		}
+	}
+	if shouldEnableHTTP2Connect(opts.proxy.Metadata, opts.push) {
+		enableHTTP2Connect(httpOpts.connectionManager)
 	}
 
 	return []*filterChainOpts{{

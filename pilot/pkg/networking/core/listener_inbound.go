@@ -846,6 +846,9 @@ func buildSidecarInboundHTTPOpts(lb *ListenerBuilder, cc inboundChainConfig) *ht
 	if cc.port.Protocol.IsHTTP2() {
 		httpOpts.connectionManager.Http2ProtocolOptions = &core.Http2ProtocolOptions{}
 	}
+	if shouldEnableHTTP2Connect(lb.node.Metadata, lb.push) {
+		enableHTTP2Connect(httpOpts.connectionManager)
+	}
 
 	if features.HTTP10 || enableHTTP10(lb.node.Metadata.HTTP10) {
 		httpOpts.connectionManager.HttpProtocolOptions = &core.Http1ProtocolOptions{

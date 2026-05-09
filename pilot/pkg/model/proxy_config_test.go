@@ -67,6 +67,15 @@ func TestConvertToMeshConfigProxyConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "enable http2 connect",
+			pc: &v1beta1.ProxyConfig{
+				EnableHttp2Connect: wrappers.Bool(true),
+			},
+			expected: &meshconfig.ProxyConfig{
+				EnableHttp2Connect: wrappers.Bool(true),
+			},
+		},
 	}
 
 	for _, tc := range cases {

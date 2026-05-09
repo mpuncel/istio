@@ -1,0 +1,7 @@
+apiVersion: release-notes/v2
+kind: feature
+area: traffic-management
+
+releaseNotes:
+  - |
+    **Added** support for enabling HTTP/2 extended CONNECT on sidecar HTTP listeners with `ProxyConfig` `enableHttp2Connect`. This allows proxies to accept RFC 8441 WebSocket upgrades without requiring an EnvoyFilter.

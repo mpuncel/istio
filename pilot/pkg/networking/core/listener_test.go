@@ -1054,6 +1054,104 @@ func TestInboundHTTPListenerConfig(t *testing.T) {
 	}
 }
 
+func TestOutboundHTTP2ConnectProxyConfig(t *testing.T) {
+	cases := []struct {
+		name         string
+		metadata     *model.NodeMetadata
+		allowConnect bool
+	}{
+		{
+			name: "default does not allow connect",
+			metadata: &model.NodeMetadata{
+				Namespace: "not-default",
+			},
+		},
+		{
+			name: "proxy config allows connect",
+			metadata: &model.NodeMetadata{
+				Namespace: "not-default",
+				ProxyConfig: &model.NodeMetaProxyConfig{
+					EnableHttp2Connect: wrappers.Bool(true),
+				},
+			},
+			allowConnect: true,
+		},
+		{
+			name: "disabled proxy config does not allow connect",
+			metadata: &model.NodeMetadata{
+				Namespace: "not-default",
+				ProxyConfig: &model.NodeMetaProxyConfig{
+					EnableHttp2Connect: wrappers.Bool(false),
+				},
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			proxy := getProxy()
+			proxy.Metadata = tt.metadata
+			listeners := buildListeners(t, TestOptions{
+				Services: []*model.Service{buildService("test.com", wildcardIPv4, protocol.HTTP, tnow)},
+			}, proxy)
+			l := xdstest.ExtractListener("0.0.0.0_8080", listeners)
+			if l == nil {
+				t.Fatal("expected outbound listener 0.0.0.0_8080")
+			}
+			filterChain := getHTTPFilterChain(t, l)
+			httpConnManager := &hcm.HttpConnectionManager{}
+			if err := getFilterConfig(getHTTPFilter(filterChain), httpConnManager); err != nil {
+				t.Fatalf("failed to get HCM: %v", err)
+			}
+			if got := httpConnManager.GetHttp2ProtocolOptions().GetAllowConnect(); got != tt.allowConnect {
+				t.Fatalf("allow_connect = %v, want %v", got, tt.allowConnect)
+			}
+		})
+	}
+}
+
+func TestInboundHTTP2ConnectProxyConfig(t *testing.T) {
+	cases := []struct {
+		name         string
+		metadata     *model.NodeMetadata
+		allowConnect bool
+	}{
+		{
+			name: "default does not allow connect",
+			metadata: &model.NodeMetadata{
+				Namespace: "not-default",
+			},
+		},
+		{
+			name: "proxy config allows connect",
+			metadata: &model.NodeMetadata{
+				Namespace: "not-default",
+				ProxyConfig: &model.NodeMetaProxyConfig{
+					EnableHttp2Connect: wrappers.Bool(true),
+				},
+			},
+			allowConnect: true,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			proxy := getProxy()
+			proxy.Metadata = tt.metadata
+			listeners := buildListeners(t, TestOptions{
+				Services: []*model.Service{buildService("test.com", wildcardIPv4, protocol.HTTP, tnow)},
+			}, proxy)
+			l := xdstest.ExtractListener(model.VirtualInboundListenerName, listeners)
+			filterChain := getHTTPFilterChainForPort(t, l, 8080)
+			httpConnManager := &hcm.HttpConnectionManager{}
+			if err := getFilterConfig(getHTTPFilter(filterChain), httpConnManager); err != nil {
+				t.Fatalf("failed to get HCM: %v", err)
+			}
+			if got := httpConnManager.GetHttp2ProtocolOptions().GetAllowConnect(); got != tt.allowConnect {
+				t.Fatalf("allow_connect = %v, want %v", got, tt.allowConnect)
+			}
+		})
+	}
+}
+
 func TestOutboundTlsTrafficWithoutTimeout(t *testing.T) {
 	services := []*model.Service{
 		{
@@ -1989,6 +2087,20 @@ func getHTTPFilterChain(t *testing.T, l *listener.Listener) *listener.FilterChai
 		}
 	}
 	t.Fatal("tcp filter chain not found")
+	return nil
+}
+
+func getHTTPFilterChainForPort(t *testing.T, l *listener.Listener, port uint32) *listener.FilterChain {
+	t.Helper()
+	for _, fc := range getFilterChains(l) {
+		if fc.GetFilterChainMatch().GetDestinationPort().GetValue() != port {
+			continue
+		}
+		if getHTTPFilter(fc) != nil {
+			return fc
+		}
+	}
+	t.Fatalf("http filter chain for port %d not found", port)
 	return nil
 }
 
